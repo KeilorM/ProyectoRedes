@@ -1,0 +1,9 @@
+# dominios exactos
+example.com
+facebook.com
+youtube.com
+
+# patrones
+*.ads.com
+tracking
+ads
