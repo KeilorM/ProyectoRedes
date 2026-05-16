@@ -43,14 +43,14 @@ def log_request(client_ip, domain, method, status, bytes_transferred):
     }
 
     # Write to log file
-    with open(LOG_FILE, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=entry.keys())
-        if os.path.getsize(LOG_FILE) == 0:
-            writer.writeheader()
-        writer.writerow(entry)
-
-    # Update in-memory stats
     with stats_lock:
+        write_header = not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0
+        with open(LOG_FILE, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=entry.keys())
+            if write_header:
+                writer.writeheader()
+            writer.writerow(entry)
+
         stats["total_requests"] += 1
         stats["total_bytes"] += bytes_transferred
         stats["domains"][domain] += 1
@@ -191,9 +191,19 @@ def handle_https(client_socket, host, client_ip):
 
     # --- Peek at TLS ClientHello to get real SNI ---
     # First send 200 so client starts TLS handshake
+    # Revisión 1: host del CONNECT (antes de responder nada)
+    if is_blocked(host, blacklist):
+        print(f"[BLOCKED HTTPS] {host}")
+        log_request(client_ip, host, "CONNECT", "BLOCKED", 0)
+        client_socket.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\nBlocked by proxy.")
+        client_socket.close()
+        return
+
+    # Ahora se envia el 200
     client_socket.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
 
     # Peek at the first bytes (TLS ClientHello)
+    # Leer el ClientHello para SNI real
     try:
         client_socket.settimeout(3)
         tls_hello = client_socket.recv(4096)
@@ -203,6 +213,13 @@ def handle_https(client_socket, host, client_ip):
 
     sni_host = extract_sni(tls_hello) if tls_hello else None
     effective_host = sni_host if sni_host else host
+
+    # Revisión 2: SNI (puede diferir del host del CONNECT)
+    if sni_host and sni_host != host and is_blocked(sni_host, blacklist):
+        print(f"[BLOCKED SNI] {sni_host}")
+        log_request(client_ip, sni_host, "CONNECT", "BLOCKED", 0)
+        client_socket.close()
+        return
 
     print(f"[HTTPS] host={host} | SNI={sni_host} | effective={effective_host}")
 
