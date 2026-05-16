@@ -1,5 +1,0 @@
-# HTTP
-curl -v --proxy http://127.0.0.1:8080 http://example.com
-
-# HTTPS
-curl -v --proxy http://127.0.0.1:8080 https://google.com

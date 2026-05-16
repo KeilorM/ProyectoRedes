@@ -1,9 +1,16 @@
-# dominios exactos
-example.com
-facebook.com
-youtube.com
+# blacklist.txt — Lista de dominios y palabras clave bloqueadas
+# Líneas que empiezan con # son comentarios
+# Formatos soportados:
+#   dominio exacto:      facebook.com
+#   wildcard:            *.ads.com
+#   subdominio seguro:   .malware.net
+#   palabra clave URL:   casino   (sin puntos = busca en la URL completa)
 
-# patrones
-*.ads.com
-tracking
-ads
+# --- Dominios de ejemplo ---
+facebook.com
+*.doubleclick.net
+ads.google.com
+
+# --- Palabras clave en URL ---
+casino
+phishing
