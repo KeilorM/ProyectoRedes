@@ -6,7 +6,7 @@ import json
 import csv
 import io
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime
 
 # Se importa el estado compartido del proxy
@@ -27,11 +27,15 @@ def get_snapshot():
     top5 = sorted(domains.items(), key=lambda x: x[1], reverse=True)[:5]
     pct_blocked = round((blocked / total * 100), 1) if total else 0
     pct_allowed = round((allowed / total * 100), 1) if total else 0
+    error = total - blocked - allowed
+    pct_error = round((error / total * 100), 1) if total else 0
 
     return {
         "total": total,
         "blocked": blocked,
         "allowed": allowed,
+        "error": error,
+        "pct_error": pct_error,
         "pct_blocked": pct_blocked,
         "pct_allowed": pct_allowed,
         "mb": round(bytes_t / (1024 * 1024), 3),
@@ -382,11 +386,12 @@ function render(d) {
   `).join('') || '<span style="color:var(--muted);font-size:0.8rem">Sin datos aún</span>';
 
   // Donut
-  drawDonut(d.allowed, d.blocked);
+  drawDonut(d.allowed, d.blocked, d.error);
   document.getElementById('donutLegend').innerHTML = `
-    <div class="legend-item"><span class="legend-dot" style="background:#00e5a0"></span>${d.allowed} permitidas (${d.pct_allowed}%)</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#ff4d6d"></span>${d.blocked} bloqueadas (${d.pct_blocked}%)</div>
-  `;
+  <div class="legend-item"><span class="legend-dot" style="background:#00e5a0"></span>${d.allowed} permitidas (${d.pct_allowed}%)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ff4d6d"></span>${d.blocked} bloqueadas (${d.pct_blocked}%)</div>
+  ${d.error > 0 ? `<div class="legend-item"><span class="legend-dot" style="background:#f0a500"></span>${d.error} errores (${d.pct_error}%)</div>` : ''}
+`;
 
   // Clients
   const tb = document.querySelector('#clientTable tbody');
@@ -408,25 +413,41 @@ function render(d) {
   `).join('') || '<tr><td colspan="6" style="color:var(--muted);padding:12px">Sin solicitudes registradas</td></tr>';
 }
 
-function drawDonut(allowed, blocked) {
+functpyion drawDonut(allowed, blocked, error) {
   const svg = document.getElementById('donut');
-  const total = allowed + blocked || 1;
+  const total = allowed + blocked + (error || 0);
+  if (total === 0) {
+    svg.innerHTML = `<circle cx="60" cy="60" r="45" fill="none" stroke="#1e2530" stroke-width="14"/>`;
+    return;
+  }
   const r = 45, cx = 60, cy = 60, stroke = 14;
   const circumference = 2 * Math.PI * r;
-  const allowedDash = (allowed / total) * circumference;
-  const blockedDash = (blocked / total) * circumference;
+
+  const allowedLen = (allowed / total) * circumference;
+  const blockedLen = (blocked / total) * circumference;
+  const errorLen   = ((error || 0) / total) * circumference;
+
+  // Offset: empezar arriba (circumference * 0.25), restar lo ya dibujado
+  const startOffset   = circumference * 0.25;
+  const blockedOffset = startOffset - allowedLen;
+  const errorOffset   = blockedOffset - blockedLen;
 
   svg.innerHTML = `
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1e2530" stroke-width="${stroke}"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
       stroke="#00e5a0" stroke-width="${stroke}"
-      stroke-dasharray="${allowedDash} ${circumference}"
-      stroke-dashoffset="${circumference * 0.25}"
+      stroke-dasharray="${allowedLen} ${circumference - allowedLen}"
+      stroke-dashoffset="${startOffset}"
       stroke-linecap="butt"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
       stroke="#ff4d6d" stroke-width="${stroke}"
-      stroke-dasharray="${blockedDash} ${circumference}"
-      stroke-dashoffset="${circumference * 0.25 - allowedDash}"
+      stroke-dasharray="${blockedLen} ${circumference - blockedLen}"
+      stroke-dashoffset="${blockedOffset}"
+      stroke-linecap="butt"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+      stroke="#f0a500" stroke-width="${stroke}"
+      stroke-dasharray="${errorLen} ${circumference - errorLen}"
+      stroke-dashoffset="${errorOffset}"
       stroke-linecap="butt"/>
     <text x="${cx}" y="${cy+6}" text-anchor="middle"
       font-family="JetBrains Mono,monospace" font-size="14" fill="#fff" font-weight="700">${total}</text>
@@ -499,6 +520,6 @@ class MonitorHandler(BaseHTTPRequestHandler):
 
 
 def start_monitor(port=8888):
-    server = HTTPServer(("0.0.0.0", port), MonitorHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", port), MonitorHandler)
     print(f"[+] Monitor panel on http://localhost:{port}")
     server.serve_forever()

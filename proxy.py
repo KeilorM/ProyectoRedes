@@ -57,7 +57,7 @@ def log_request(client_ip, domain, method, status, bytes_transferred):
         stats["clients"][client_ip] += 1
         if status == "BLOCKED":
             stats["blocked"] += 1
-        else:
+        elif status == "ALLOWED":
             stats["allowed"] += 1
         stats["requests_log"].append(entry)
         if len(stats["requests_log"]) > 500:
@@ -91,20 +91,20 @@ def is_blocked(host, blacklist):
                 return True
     return False
 
-
 def send_block_page(client_socket):
+    body = "<html><body><h1>403 Forbidden</h1><p>Blocked by proxy filter.</p></body></html>"
     response = (
         "HTTP/1.1 403 Forbidden\r\n"
         "Content-Type: text/html\r\n"
+        f"Content-Length: {len(body.encode())}\r\n"
         "Connection: close\r\n"
         "\r\n"
-        "<html><body><h1>403 Forbidden</h1><p>Blocked by proxy filter.</p></body></html>"
+        + body
     )
     try:
         client_socket.sendall(response.encode())
     except:
         pass
-
 
 # =========================
 # SNI EXTRACTION FROM TLS
@@ -205,11 +205,12 @@ def handle_https(client_socket, host, client_ip):
     # Peek at the first bytes (TLS ClientHello)
     # Leer el ClientHello para SNI real
     try:
-        client_socket.settimeout(3)
-        tls_hello = client_socket.recv(4096)
-        client_socket.settimeout(None)
+        client_socket.settimeout(15)
+        tls_hello = client_socket.recv(8192)
     except:
         tls_hello = b""
+    finally:
+        client_socket.settimeout(None)
 
     sni_host = extract_sni(tls_hello) if tls_hello else None
     effective_host = sni_host if sni_host else host
@@ -232,13 +233,13 @@ def handle_https(client_socket, host, client_ip):
             pass
         return
 
-    log_request(client_ip, effective_host, "CONNECT", "ALLOWED", 0)
-
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         server_socket.connect((host, 443))
+        server_socket.settimeout(15)
     except Exception as e:
         print(f"[ERROR] Cannot connect to {host}:443 — {e}")
+        server_socket.close()
         client_socket.close()
         return
 
@@ -250,6 +251,7 @@ def handle_https(client_socket, host, client_ip):
 
     def forward(src, dst, count=False):
         try:
+            src.settimeout(15)
             while True:
                 data = src.recv(BUFFER_SIZE)
                 if not data:
@@ -267,9 +269,13 @@ def handle_https(client_socket, host, client_ip):
     t1.join()
     t2.join()
 
-    # Update bytes transferred
-    with stats_lock:
-        stats["total_bytes"] += bytes_counter[0]
+    log_request(
+        client_ip,
+        effective_host,
+        "CONNECT",
+        "ALLOWED",
+        bytes_counter[0]
+    )
 
     client_socket.close()
     server_socket.close()
@@ -282,7 +288,7 @@ def handle_http(client_socket, request_text, lines, request_line, client_ip):
     blacklist = load_blacklist()
 
     # Extract method
-    parts = request_line.split(" ")
+    parts = request_line.split()
     method = parts[0] if parts else "GET"
 
     # Extract host
@@ -333,10 +339,21 @@ def handle_http(client_socket, request_text, lines, request_line, client_ip):
     except Exception as e:
         print(f"[ERROR] Cannot connect to {host}:80 — {e}")
         log_request(client_ip, host, method, "ERROR", 0)
+        try:
+            body = "<html><body><h1>502 Bad Gateway</h1><p>Could not connect to host.</p></body></html>"
+            resp = (
+                "HTTP/1.1 502 Bad Gateway\r\n"
+                "Content-Type: text/html\r\n"
+                f"Content-Length: {len(body.encode())}\r\n"
+                "Connection: close\r\n\r\n" + body
+            )
+            client_socket.sendall(resp.encode())
+        except:
+            pass
         client_socket.close()
         return
 
-    server_socket.settimeout(5)
+    server_socket.settimeout(15)
     server_socket.sendall(new_request.encode())
 
     total_bytes = 0
@@ -366,6 +383,7 @@ def handle_client(client_socket, client_address):
     print(f"[+] Connection from {client_ip}")
 
     try:
+        client_socket.settimeout(15)
         request = client_socket.recv(BUFFER_SIZE)
         if not request:
             client_socket.close()
