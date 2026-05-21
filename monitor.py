@@ -6,7 +6,7 @@ import json
 import csv
 import io
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime
 
 # Se importa el estado compartido del proxy
@@ -499,6 +499,6 @@ class MonitorHandler(BaseHTTPRequestHandler):
 
 
 def start_monitor(port=8888):
-    server = HTTPServer(("0.0.0.0", port), MonitorHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", port), MonitorHandler)
     print(f"[+] Monitor panel on http://localhost:{port}")
     server.serve_forever()

@@ -8,6 +8,7 @@
 
 # --- Dominios de ejemplo ---
 facebook.com
+.facebook.com
 *.doubleclick.net
 ads.google.com
 
