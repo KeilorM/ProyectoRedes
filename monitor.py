@@ -413,7 +413,7 @@ function render(d) {
   `).join('') || '<tr><td colspan="6" style="color:var(--muted);padding:12px">Sin solicitudes registradas</td></tr>';
 }
 
-functpyion drawDonut(allowed, blocked, error) {
+function drawDonut(allowed, blocked, error) {
   const svg = document.getElementById('donut');
   const total = allowed + blocked + (error || 0);
   if (total === 0) {
