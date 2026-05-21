@@ -239,6 +239,7 @@ def handle_https(client_socket, host, client_ip):
         server_socket.settimeout(15)
     except Exception as e:
         print(f"[ERROR] Cannot connect to {host}:443 — {e}")
+        log_request(client_ip, effective_host, "CONNECT", "ERROR", 0)
         server_socket.close()
         client_socket.close()
         return
