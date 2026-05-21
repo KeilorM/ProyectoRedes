@@ -11,6 +11,7 @@ facebook.com
 .facebook.com
 *.doubleclick.net
 ads.google.com
+testphp.vulnweb.com
 
 # --- Palabras clave en URL ---
 casino
