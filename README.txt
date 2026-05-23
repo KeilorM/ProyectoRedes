@@ -16,7 +16,7 @@ ARCHIVOS
   blacklist.txt → Lista de dominios/palabras clave bloqueadas
   proxy.log     → Log CSV generado automáticamente al correr
 
-CÓMO EJECUTAR
+¿CÓMO EJECUTAR?
 -------------
 1. Abrir una terminal en la carpeta del proyecto
 2. Ejecutar:
@@ -27,16 +27,11 @@ CÓMO EJECUTAR
      • Proxy   → puerto 8080
      • Panel   → http://localhost:8888
 
-CONFIGURAR EL NAVEGADOR
+CONFIGURACIÓN
 ------------------------
-Firefox:
-  Opciones → General → Configuración de red → Configuración manual
-  HTTP Proxy: 127.0.0.1   Puerto: 8080
-  ✓ Usar este proxy también para HTTPS
-
-Chrome / Edge (Windows):
-  Panel de control → Opciones de Internet → Conexiones → Configuración LAN
-  Activar proxy: 127.0.0.1:8080
+En cualquier computadora vamos a Configuración -- Red e Internet y desactivamos la configuración automática del proxy
+Luego seleccionamos Proxy -- Configuración manual del proxy -- Le damos a Establecer y agregamos la IPv4  y el puerto 8080.
+Una vez hecho esto guardamos la configuración y nuesta computadora estará lista para la realización de pruebas.
 
 ARCHIVO DE BLACKLIST (blacklist.txt)
 -------------------------------------
@@ -57,7 +52,7 @@ FUNCIONALIDADES IMPLEMENTADAS
       - Total solicitudes
       - MB transferidos
       - Top 5 dominios
-      - Bloqueadas vs permitidas (gráfica donut)
+      - Bloqueadas vs permitidas (gráfica tipo donut)
       - Clientes activos
       - Tabla de últimas 50 solicitudes
   ✔ Exportación de logs (CSV y JSON desde el panel)
