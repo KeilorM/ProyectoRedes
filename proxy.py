@@ -91,18 +91,96 @@ def is_blocked(host, blacklist):
                 return True
     return False
 
-def send_block_page(client_socket):
-    body = "<html><body><h1>403 Forbidden</h1><p>Blocked by proxy filter.</p></body></html>"
+def send_block_page(client_socket, domain="este sitio"):
+    body = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sitio bloqueado</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+    :root {{
+      --bg: #0a0c0f; --surface: #111418; --border: #1e2530;
+      --accent2: #ff4d6d; --text: #c8d0dc; --muted: #5a6475; --card: #13171e;
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      background: var(--bg); color: var(--text);
+      font-family: 'Syne', sans-serif; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }}
+    header {{
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 32px; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }}
+    header h1 {{
+      font-size: 1.3rem; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--accent2);
+    }}
+    .badge {{
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      padding: 4px 10px; border-radius: 4px;
+      border: 1px solid var(--accent2); color: var(--accent2);
+    }}
+    main {{
+      flex: 1; display: flex; align-items: center;
+      justify-content: center; padding: 40px 20px;
+    }}
+    .card {{
+      background: var(--card); border: 1px solid var(--border);
+      border-top: 3px solid var(--accent2); border-radius: 12px;
+      padding: 48px 40px; max-width: 520px; width: 100%; text-align: center;
+    }}
+    .icon {{ font-size: 56px; margin-bottom: 20px; }}
+    h2 {{
+      color: var(--accent2); font-size: 1.6rem; font-weight: 800;
+      letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px;
+    }}
+    .domain {{
+      background: rgba(255,77,109,0.1); color: var(--accent2);
+      border: 1px solid rgba(255,77,109,0.3); border-radius: 6px;
+      padding: 10px 20px; display: inline-block;
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+      margin: 16px 0 24px; word-break: break-all;
+    }}
+    p {{ color: var(--muted); line-height: 1.7; font-size: 0.9rem; }}
+    footer {{
+      text-align: center; padding: 16px; font-size: 0.72rem;
+      color: var(--muted); border-top: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+    }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>&#x26A1; Proxy Monitor</h1>
+    <span class="badge">BLOQUEADO</span>
+  </header>
+  <main>
+    <div class="card">
+      <div class="icon">&#x1F6AB;</div>
+      <h2>Acceso denegado</h2>
+      <div class="domain">{domain}</div>
+      <p>Este sitio est&#225; restringido por la pol&#237;tica del proxy.<br>
+         No es posible acceder a este dominio desde esta red.</p>
+    </div>
+  </main>
+  <footer>Proxy UNA &#8212; Comunicaci&#243;n y Redes de Computadores</footer>
+</body>
+</html>"""
+    encoded = body.encode("utf-8")
     response = (
         "HTTP/1.1 403 Forbidden\r\n"
-        "Content-Type: text/html\r\n"
-        f"Content-Length: {len(body.encode())}\r\n"
+        "Content-Type: text/html; charset=utf-8\r\n"
+        f"Content-Length: {{len(encoded)}}\r\n"
         "Connection: close\r\n"
         "\r\n"
-        + body
-    )
+    ).encode("utf-8") + encoded
     try:
-        client_socket.sendall(response.encode())
+        client_socket.sendall(response)
+        import time; time.sleep(0.3)
     except:
         pass
 
@@ -195,9 +273,17 @@ def handle_https(client_socket, host, client_ip):
     if is_blocked(host, blacklist):
         print(f"[BLOCKED HTTPS] {host}")
         log_request(client_ip, host, "CONNECT", "BLOCKED", 0)
-        client_socket.sendall(b"HTTP/1.1 403 Forbidden\r\n\r\nBlocked by proxy.")
         client_socket.close()
         return
+
+    # Revisión 1b: keywords en el hostname HTTPS
+    for rule in blacklist:
+        if "*" not in rule and "." not in rule and not rule.startswith("."):
+            if rule in host.lower():
+                print(f"[BLOCKED HTTPS keyword] '{rule}' en {host}")
+                log_request(client_ip, host, "CONNECT", "BLOCKED", 0)
+                client_socket.close()
+                return
 
     # Ahora se envia el 200
     client_socket.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
@@ -309,7 +395,7 @@ def handle_http(client_socket, request_text, lines, request_line, client_ip):
     if is_blocked(host, blacklist):
         print(f"[BLOCKED HTTP] {host}")
         log_request(client_ip, host, method, "BLOCKED", 0)
-        send_block_page(client_socket)
+        send_block_page(client_socket, host)
         client_socket.close()
         return
 
@@ -319,7 +405,7 @@ def handle_http(client_socket, request_text, lines, request_line, client_ip):
             if rule in full_url.lower() or rule in host.lower():
                 print(f"[BLOCKED keyword] '{rule}' in {full_url}")
                 log_request(client_ip, host, method, "BLOCKED", 0)
-                send_block_page(client_socket)
+                send_block_page(client_socket, host)
                 client_socket.close()
                 return
 

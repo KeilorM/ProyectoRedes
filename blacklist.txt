@@ -12,6 +12,10 @@ facebook.com
 *.doubleclick.net
 ads.google.com
 testphp.vulnweb.com
+example.com
+neverssl.com
+instagram.com
+.instagram.com
 
 # --- Palabras clave en URL ---
 casino
