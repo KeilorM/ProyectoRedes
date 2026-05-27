@@ -40,6 +40,42 @@ ARCHIVO DE BLACKLIST (blacklist.txt)
   .malware.net          → cualquier host que termine en .malware.net
   casino                → palabra clave en la URL (HTTP)
 
+  
+INSTALACIÓN DEL CERTIFICADO CA (para bloqueo HTTPS con página HTML)
+--------------------------------------------------------------------
+Por defecto el proxy bloquea HTTPS por SNI sin descifrar el tráfico.
+Si se quiere mostrar una página HTML de bloqueo en lugar de un error
+de conexión, hay que activar el modo MITM TLS:
+
+1. Instalar la dependencia:
+
+       pip install cryptography
+
+2. Generar la CA raíz (solo una vez):
+
+       python gen_ca.py
+
+   Esto crea dos archivos:
+     • ca.crt  → certificado público (se instala en el browser)
+     • ca.key  → clave privada (NO subir a Git, NO compartir)
+
+3. Instalar ca.crt en Chrome:
+     a. Ir a chrome://settings/certificates
+     b. Pestaña "Entidades de certificación" → Importar
+     c. Seleccionar ca.crt
+     d. Marcar "Confiar en esta CA para identificar sitios web"
+     e. Aceptar
+
+   Sin este paso, los sitios HTTPS bloqueados mostrarán error de
+   conexión del browser en lugar de la página de bloqueo.
+
+ARCHIVOS A IGNORAR EN GIT (.gitignore)
+---------------------------------------
+  ca.key
+  ca.crt
+  proxy.log
+  blacklist.txt
+  
 FUNCIONALIDADES IMPLEMENTADAS
 ------------------------------
   ✔ Proxy HTTP (GET, POST, métodos estándar)
