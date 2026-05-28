@@ -6,7 +6,7 @@
 REQUISITOS
 ----------
 - Python 3.8 o superior
-- Sin dependencias externas (solo stdlib)
+- pip install cryptography
 
 ARCHIVOS
 --------
@@ -40,7 +40,7 @@ ARCHIVO DE BLACKLIST (blacklist.txt)
   .malware.net          → cualquier host que termine en .malware.net
   casino                → palabra clave en la URL (HTTP)
 
-  
+
 INSTALACIÓN DEL CERTIFICADO CA (para bloqueo HTTPS con página HTML)
 --------------------------------------------------------------------
 Por defecto el proxy bloquea HTTPS por SNI sin descifrar el tráfico.
@@ -75,7 +75,7 @@ ARCHIVOS A IGNORAR EN GIT (.gitignore)
   ca.crt
   proxy.log
   blacklist.txt
-  
+
 FUNCIONALIDADES IMPLEMENTADAS
 ------------------------------
   ✔ Proxy HTTP (GET, POST, métodos estándar)

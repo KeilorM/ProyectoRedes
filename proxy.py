@@ -503,7 +503,7 @@ def start_proxy(port=8080):
         open(LOG_FILE, "w").close()
 
     if not os.path.exists(CA_CERT) or not os.path.exists(CA_KEY):
-        print("⚠️  ADVERTENCIA: ca.crt o ca.key no encontrados.")
+        print("   ADVERTENCIA: ca.crt o ca.key no encontrados.")
         print("   Ejecutá gen_ca.py primero para generar la CA.")
         print("   Sin CA, los sitios HTTPS bloqueados mostrarán error del navegador en lugar de la página HTML.\n")
 
