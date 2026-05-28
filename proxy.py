@@ -193,7 +193,7 @@ def send_block_page(sock, domain="este sitio"):
     ).encode("utf-8") + encoded
     try:
         sock.sendall(response)
-        time.sleep(0.3)
+        time.sleep(1.0)
     except:
         pass
 
@@ -219,7 +219,7 @@ def generate_cert_for_domain(domain):
         .issuer_name(ca_cert.subject)
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.utcnow())
+        .not_valid_before(datetime.datetime.utcnow() - datetime.timedelta(days=1))
         .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))
         .add_extension(
             x509.SubjectAlternativeName([

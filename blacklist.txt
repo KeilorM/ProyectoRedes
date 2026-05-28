@@ -17,7 +17,7 @@ neverssl.com
 instagram.com
 .instagram.com
 youtube.com
-.youtube.com
+*.youtube.com
 
 # --- Palabras clave en URL ---
 casino
